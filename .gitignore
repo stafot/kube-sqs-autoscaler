@@ -1,1 +1,3 @@
 kube-sqs-autoscaler
+_vendor*
+.idea/*

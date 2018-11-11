@@ -1,6 +1,6 @@
-FROM alpine:3.4
+FROM debian
 
-RUN  apk add --no-cache --update ca-certificates
+RUN  apt-get update && apt-get install -y ca-certificates
 
 COPY kube-sqs-autoscaler /
 

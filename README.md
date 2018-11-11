@@ -76,3 +76,87 @@ Next you want to attach this policy so kube-sqs-autoscaler can retreive SQS attr
     }]
 }
 ```
+#### Support for using AWS IAM USER instead of AWS IAM ROLE
+1) You need a pair of valid credentials as ENVs named `SQS_ACCESS_KEY` and `SQS_ACCESS_SECRET`. The minimum permissions policy for this user is the above.
+2) Sample configuration:
+
+a) ConfigMap:
+```yaml
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: sqs-config
+  namespace: default
+data:
+    SQS_ACCESS_KEY: <MY_ACCESS_KEY>
+```
+b) Secret:
+```yaml
+kind: Secret
+apiVersion: v1
+metadata:
+  name: sqs-secret
+  namespace: default
+data:
+  SQS_ACCESS_SECRET: <MY_SECRET_KEY>
+```
+c) Deployment:
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kube-sqs-autoscaler
+  labels:
+    app: kube-sqs-autoscaler
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kube-sqs-autoscaler
+  template:
+    metadata:
+      labels:
+        app: kube-sqs-autoscaler
+    spec:
+      containers:
+      - name: kube-sqs-autoscaler
+        image: wattpad/kube-sqs-autoscaler:v1.2.2
+        command:
+          - /kube-sqs-autoscaler
+          - --sqs-queue-url=https://sqs.your_aws_region.amazonaws.com/your_aws_account_number/your_queue_name  # required
+          - --kubernetes-deployment=your-kubernetes-deployment-name # required
+          - --kubernetes-namespace=$(POD_NAMESPACE) # optional
+          - --aws-region=us-west-1  #required
+          - --poll-period=5s # optional
+          - --scale-down-cool-down=30s # optional
+          - --scale-up-cool-down=5m # optional
+          - --scale-up-messages=100 # optional
+          - --scale-down-messages=10 # optional
+          - --max-pods=5 # optional
+          - --min-pods=1 # optional
+        env:
+          - name: POD_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+        envFrom:
+        - configMapRef:
+            name: sqs-config
+        - secretRef:
+            name: sqs-secret
+        resources:
+          requests:
+            memory: "200Mi"
+            cpu: "100m"
+          limits:
+            memory: "200Mi"
+            cpu: "100m"
+        volumeMounts:
+          - name: ssl-certs
+            mountPath: /etc/ssl/certs/ca-certificates.crt
+            readOnly: true
+      volumes:
+        - name: ssl-certs
+          hostPath:
+            path: "/etc/ssl/certs/ca-certificates.crt"
+```

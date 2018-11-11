@@ -1,8 +1,9 @@
 package sqs
 
 import (
+	"github.com/aws/aws-sdk-go/aws/credentials"
 	"strconv"
-
+	"os"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sqs"
@@ -22,10 +23,20 @@ type SqsClient struct {
 }
 
 func NewSqsClient(queue string, region string) *SqsClient {
-	svc := sqs.New(session.New(), &aws.Config{Region: aws.String(region)})
-	return &SqsClient{
-		svc,
-		queue,
+	key := os.Getenv("SQS_ACCESS_KEY")
+	secret := os.Getenv("SQS_ACCESS_SECRET")
+	if (key != "" && secret != "") {
+		svc := sqs.New(session.New(), &aws.Config{Region: aws.String(region), Credentials: credentials.NewStaticCredentials(key, secret, "")})
+		return &SqsClient{
+			svc,
+			queue,
+		}
+	} else {
+		svc := sqs.New(session.New(), &aws.Config{Region: aws.String(region)})
+		return &SqsClient{
+			svc,
+			queue,
+		}
 	}
 }
 
